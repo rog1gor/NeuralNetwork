@@ -10,26 +10,30 @@ class Layer:
     #& Mapping floats to neurons
     @staticmethod
     def __sigmoid(x: float) -> neuron:
-        return 1 / (1 + math.exp(-x))
-    
+        try:
+            result = 1 / (1 + math.exp(-x))
+        except OverflowError:
+            result = float('inf')
+        return result
+
     def __init__(self, num_neurons: int, num_following_neurons: int):
         #? num_neurons(N): number of neurons in this layer
         #? num_following_neurons(M): number of neurons in the following layer
         
         #? N dimentional vectors
         self.neurons            = np.zeros((num_neurons,))
-        self.neuron_gradients   = np.zeros((num_neurons,))
+        self.neuron_derivatives = np.zeros((num_neurons,))
 
         #? M dimentional vectors
-        self.biases         = np.ones((num_following_neurons,))
-        self.bias_gradients = np.zeros((num_following_neurons,))
+        self.biases             = np.ones((num_following_neurons,))
+        self.bias_derivatives   = np.zeros((num_following_neurons,))
 
         #? N x M matrix
         self.weigths            = np.ones((num_neurons, num_following_neurons))
-        self.weigth_gradients   = np.zeros((num_neurons, num_following_neurons))
+        self.weigth_derivatives = np.zeros((num_neurons, num_following_neurons))
 
         #? sigmoid function gradient
-        self.sigmoid_gradient   = np.zeros((num_following_neurons,))
+        self.sigmoid_derivatives = np.zeros((num_following_neurons,))
 
     #& Calculates neurons in a following layer
     def calculate_following_neurons(self) -> np.ndarray[neuron]:
@@ -39,39 +43,40 @@ class Layer:
         return mapper(next_layer)
     
     #& Sets all gradients to zero
-    def __reset_gradients(self):
+    def __reset_derivatives(self):
         N = self.neurons.shape[0]
         M = self.biases.shape[0]
-        self.neuron_gradients   = np.zeros((N,))
-        self.bias_gradients     = np.zeros((M,))
-        self.weigth_gradients   = np.zeros((N, M))
-        self.sigmoid_gradient   = np.zeros((M,))
+        self.neuron_derivatives     = np.zeros((N,))
+        self.bias_derivatives       = np.zeros((M,))
+        self.weigth_derivatives     = np.zeros((N, M))
+        self.sigmoid_derivatives    = np.zeros((M,))
 
-    def __update_sigmoid_gradients(self, prev_layer_gradients: np.array[float]) -> None:
-        #todo
-        pass
+    def __update_sigmoid_derivatives(self, following_layer_derivatives: np.ndarray[float]) -> None:
+        mapper = np.vectorize(lambda x: Layer.__sigmoid(x) * Layer.__sigmoid(1 - x) * x)
+        self.sigmoid_derivatives = mapper(following_layer_derivatives)
     
-    def __update_bias_gradients(self) -> None:
-        #todo
-        pass
+    def __update_bias_derivatives(self) -> None:
+        self.bias_derivatives = self.sigmoid_derivatives
 
-    def __update_weight_gradients(self) -> None:
-        #todo
-        pass
+    def __update_weight_derivatives(self) -> None:
+        self.weigth_derivatives = np.dot(self.neurons[np.newaxis].T, self.sigmoid_derivatives[np.newaxis])
 
-    def __update_neuron_gradients(self) -> None:
-        #todo
-        pass
+    def __update_neuron_derivatives(self) -> None:
+        self.neuron_derivatives = np.apply_along_axis(lambda x: np.sum(x * self.sigmoid_derivatives), axis=1, arr=self.weigths)
 
     #& Calculates new gradients based on layers in the following layer
     #& Returns new neuron gradients
-    def calculate_gradients(self, prev_layer_gradients: np.array[float]) -> np.array[float]:
-        self.__reset_gradients()
-        self.__update_sigmoid_gradients(prev_layer_gradients)
-        self.__update_bias_gradients()
-        self.__update_weight_gradients()
-        self.__update_neuron_gradients()
-        return self.neuron_gradients
+    def calculate_derivatives(self, prev_layer_derivatives: np.ndarray[float]) -> np.ndarray[float]:
+        self.__reset_derivatives()
+        self.__update_sigmoid_derivatives(prev_layer_derivatives)
+        self.__update_bias_derivatives()
+        self.__update_weight_derivatives()
+        self.__update_neuron_derivatives()
+        return self.neuron_derivatives
+    
+    def update_parameters(self):
+        self.biases     -= self.bias_derivatives
+        self.weigths    -= self.weigth_derivatives
 
 
 class NeuralNetwork:
@@ -113,21 +118,23 @@ class NeuralNetwork:
         return np.sum(
             mapper(self.output_layer - self.expected_output))
     
-    def __calculate_output_layer_gradient() -> np.array[float]:
-        #todo
-        pass
+    def __calculate_output_layer_derivatives(self) -> np.ndarray[float]:
+        mapper = np.vectorize(lambda x: self.score / 2*x)
+        return mapper(self.output_layer - self.expected_output)
 
-    def __update_gradients(self) -> None:
-        prev_layer_gradients = self.__calculate_output_layer_gradient()
+    def __update_gradient(self) -> None:
+        following_layer_derivatives = self.__calculate_output_layer_derivatives()
         for layer in np.flip(self.hidden_layers):
-            prev_layer_gradients = layer.calculate_gradients(prev_layer_gradients)
+            following_layer_derivatives = layer.calculate_derivatives(following_layer_derivatives)
+        self.input_layer.calculate_derivatives(following_layer_derivatives)
             
 
     def __update_parameters(self):
-        #todo
-        pass
+        self.input_layer.update_parameters()
+        for layer in self.hidden_layers:
+            layer.update_parameters()
 
-    def __init__(self, input_path: str, layer_dimensions: np.array[int], final_dimension: int):
+    def __init__(self, input_path: str, layer_dimensions: np.ndarray[int], final_dimension: int):
         assert len(layer_dimensions) > 0,   "There should be at least one layer!"
         assert min(layer_dimensions) > 0,   "All layers must have dimensions at least 1"
         assert final_dimension > 0,         "Final dimension must be at least 1"
@@ -153,9 +160,10 @@ class NeuralNetwork:
     def score_input(self, expected_output: int) -> float:
         self.__create_expected_output(expected_output)
         self.__update_output_layer()
-        return self.__scoring_function()
+        self.score = self.__scoring_function()
+        return self.score
 
     #& Updates parameters based on the score difference
     def backpropagation(self) -> None:
-        self.__update_gradients()
+        self.__update_gradient()
         self.__update_parameters()

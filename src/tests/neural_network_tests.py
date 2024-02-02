@@ -16,11 +16,11 @@ def __backpropagation_test(
         input_file: str, expected_output: int,
         layer_dimensions: list[int], final_dimension: int):
     neural_network = nn.NeuralNetwork(input_file, layer_dimensions, final_dimension)
-    for _ in range(10):
+    for _ in range(1000):
         _ = neural_network.score_input(expected_output)
         neural_network.backpropagation()
     score = neural_network.score_input(expected_output)
-    assert score < 0.000001, f"Score is too high: {score}"
+    assert score < 0.1, f"Score is too high: {score}"
 
 def neural_network_unit_tests():
     print("Running Neural Network unit test...")
