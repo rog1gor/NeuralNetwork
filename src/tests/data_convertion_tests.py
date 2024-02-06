@@ -57,7 +57,8 @@ def img_to_neurons_unit_test(img_path: str):
     
     neurons = dc.img_to_neurons(img_path)
     try:
-        assert len(neurons.shape) == 1, "Neurons should be a one dimentional vector"
+        assert len(neurons.shape) == 1, \
+            "Neurons should be a one dimentional vector"
         for neuron in neurons:
             assert neuron == 0. or neuron == 1., f"""
                 Neurons must have value either 1. or 0.

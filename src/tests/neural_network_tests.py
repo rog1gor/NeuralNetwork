@@ -7,7 +7,8 @@ import neural_network as nn
 def _caluculate_output_test(
         input_file: str, expected_output: int,
         layer_dimensions: list[int], final_dimension: int, failure=False):    
-    neural_network = nn.NeuralNetwork(input_file, layer_dimensions, final_dimension)
+    neural_network = nn.NeuralNetwork(
+        input_file, layer_dimensions, final_dimension)
     score = neural_network.score_input(expected_output)
     if failure:
         try:
@@ -27,7 +28,8 @@ def _caluculate_output_test(
 def _backpropagation_test(
         input_file: str, expected_output: int,
         layer_dimensions: list[int], final_dimension: int):
-    neural_network = nn.NeuralNetwork(input_file, layer_dimensions, final_dimension)
+    neural_network = nn.NeuralNetwork(
+        input_file, layer_dimensions, final_dimension)
     for _ in range(1000):
         _ = neural_network.score_input(expected_output)
         neural_network.backpropagation()
