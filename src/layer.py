@@ -2,7 +2,7 @@ import numpy as np
 import math
 
 #? neuron is a float between 0. and 1.
-neuron: float
+neuron = float
 
 class Layer:
     #& Mapping floats to neurons

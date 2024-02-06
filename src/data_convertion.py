@@ -7,7 +7,7 @@ neuron = float
 #& Returns:
 #& 0. - empty pixel
 #& 1. - filled pixel
-def __classify_pixel(pixel: np.ndarray) -> neuron:
+def _classify_pixel(pixel: np.ndarray) -> neuron:
     assert pixel.shape == (3,), f"""
         Unexpected pixel shape.
         Expected shape: (3,)
@@ -26,7 +26,7 @@ def img_to_neurons(png_file: str) -> np.ndarray[neuron]:
     pixels = img.reshape(img.shape[0]*img.shape[1], img.shape[2])
     
     #? Convert each RGB pixel into a "black or white" pixel
-    return np.apply_along_axis(__classify_pixel, axis=1, arr=pixels)
+    return np.apply_along_axis(_classify_pixel, axis=1, arr=pixels)
     
 
 if __name__ == "__main__":
